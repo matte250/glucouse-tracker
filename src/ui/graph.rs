@@ -1,6 +1,6 @@
 use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime};
 use eframe::egui::{self, Ui};
-use egui_plot::{HLine, Line, Plot, PlotPoints};
+use egui_plot::{GridInput, GridMark, HLine, Line, Plot, PlotPoints};
 
 use crate::db::Database;
 use crate::models::GlucoseReading;
@@ -64,22 +64,68 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
         return;
     }
 
-    // Use the earliest reading as the reference epoch for the x-axis
-    let epoch = state.readings.first().unwrap().recorded_at.and_utc().timestamp() as f64;
-
     let points: Vec<[f64; 2]> = state
         .readings
         .iter()
         .map(|r| {
-            let x = r.recorded_at.and_utc().timestamp() as f64 - epoch;
+            let x = r.recorded_at.and_utc().timestamp() as f64;
             [x, r.value]
         })
         .collect();
 
     Plot::new("glucose_plot")
         .height(300.0)
-        .x_axis_label("Time (seconds from first reading)")
         .y_axis_label("mmol/L")
+        .x_grid_spacer(|input: GridInput| {
+            let day = 86400.0_f64;
+            let hour = 3600.0_f64;
+            let (min, max) = input.bounds;
+            let mut marks = Vec::new();
+
+            // Thickest lines at day boundaries, medium at 6h, thin at 1h
+            let intervals = [day, hour * 6.0, hour];
+
+            for &step in &intervals {
+                if step < input.base_step_size * 0.5 {
+                    continue;
+                }
+                let first = (min / step).ceil() as i64;
+                let last = (max / step).floor() as i64;
+                for i in first..=last {
+                    let value = i as f64 * step;
+                    marks.push(GridMark {
+                        value,
+                        step_size: step,
+                    });
+                }
+            }
+            marks
+        })
+        .x_axis_formatter(|mark: GridMark, _range: &std::ops::RangeInclusive<f64>| {
+            let secs = mark.value as i64;
+            match chrono::DateTime::from_timestamp(secs, 0) {
+                Some(dt) => dt
+                    .with_timezone(&Local)
+                    .format("%b %d %H:%M")
+                    .to_string(),
+                None => String::new(),
+            }
+        })
+        .label_formatter(|name, point| {
+            let secs = point.x as i64;
+            let time_str = match chrono::DateTime::from_timestamp(secs, 0) {
+                Some(dt) => dt
+                    .with_timezone(&Local)
+                    .format("%b %d %H:%M")
+                    .to_string(),
+                None => format!("{}", point.x),
+            };
+            if name.is_empty() {
+                format!("{time_str}\n{:.1} mmol/L", point.y)
+            } else {
+                format!("{name}\n{time_str}\n{:.1} mmol/L", point.y)
+            }
+        })
         .show(ui, |plot_ui| {
             plot_ui.line(Line::new(PlotPoints::new(points)).name("Glucose"));
 
