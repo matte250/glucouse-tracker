@@ -38,6 +38,7 @@ pub fn show_entry_form(ui: &mut Ui, state: &mut EntryFormState, db: &Database, c
         .show(ui, |ui: &mut Ui| {
             ui.label("Date:");
             let date_resp = ui.text_edit_singleline(&mut state.single_date);
+            let enter_date = date_resp.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             if date_resp.has_focus() {
                 let up = ui.input(|i| i.key_pressed(Key::ArrowUp));
                 let down = ui.input(|i| i.key_pressed(Key::ArrowDown));
@@ -58,6 +59,7 @@ pub fn show_entry_form(ui: &mut Ui, state: &mut EntryFormState, db: &Database, c
 
             ui.label("Time:");
             let time_resp = ui.text_edit_singleline(&mut state.single_time);
+            let enter_time = time_resp.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             if time_resp.has_focus() {
                 let up = ui.input(|i| i.key_pressed(Key::ArrowUp));
                 let down = ui.input(|i| i.key_pressed(Key::ArrowDown));
@@ -78,10 +80,10 @@ pub fn show_entry_form(ui: &mut Ui, state: &mut EntryFormState, db: &Database, c
 
             ui.label("Value (mmol/L):");
             let value_resp = ui.text_edit_singleline(&mut state.single_value);
-            let enter = value_resp.has_focus() && ui.input(|i| i.key_pressed(Key::Enter));
+            let enter = value_resp.lost_focus() && ui.input(|i| i.key_pressed(Key::Enter));
             ui.end_row();
 
-            enter
+            enter_date || enter_time || enter
         }).inner;
 
     if ui.button("Add").clicked() || enter_pressed {

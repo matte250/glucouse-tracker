@@ -60,7 +60,13 @@ impl App for GlucoseTrackerApp {
 
         CentralPanel::default().show(ctx, |ui| {
             let mut changed = false;
-            show_readings_list(ui, &mut self.readings_list, &self.db, &mut changed);
+            if let Some((date, time, value)) =
+                show_readings_list(ui, &mut self.readings_list, &self.db, &mut changed)
+            {
+                self.entry_form.single_date = date;
+                self.entry_form.single_time = time;
+                self.entry_form.single_value = value;
+            }
             if changed {
                 self.needs_refresh = true;
             }

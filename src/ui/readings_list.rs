@@ -26,7 +26,7 @@ pub fn show_readings_list(
     state: &mut ReadingsListState,
     db: &Database,
     changed: &mut bool,
-) {
+) -> Option<(String, String, String)> {
     ui.heading("Readings");
     ui.separator();
 
@@ -39,6 +39,7 @@ pub fn show_readings_list(
 
     let filter = state.filter_text.trim().to_lowercase();
     let mut to_delete: Option<i64> = None;
+    let mut clicked_reading: Option<(String, String, String)> = None;
 
     egui::ScrollArea::vertical()
         .id_salt("readings_list_scroll")
@@ -66,9 +67,12 @@ pub fn show_readings_list(
                             }
                         }
 
-                        ui.label(&date_str);
-                        ui.label(&time_str);
-                        ui.label(&value_str);
+                        let r1 = ui.label(&date_str).interact(egui::Sense::click());
+                        let r2 = ui.label(&time_str).interact(egui::Sense::click());
+                        let r3 = ui.label(&value_str).interact(egui::Sense::click());
+                        if r1.clicked() || r2.clicked() || r3.clicked() {
+                            clicked_reading = Some((date_str, time_str, value_str));
+                        }
                         if ui.small_button("Delete").clicked() {
                             to_delete = Some(reading.id);
                         }
@@ -81,4 +85,6 @@ pub fn show_readings_list(
         let _ = db.delete_reading(id);
         *changed = true;
     }
+
+    clicked_reading
 }
