@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime};
 use eframe::egui::{self, Ui};
 use egui_plot::{GridInput, GridMark, HLine, Line, Plot, PlotPoints};
@@ -9,6 +11,9 @@ pub struct GraphState {
     pub from_date: String,
     pub to_date: String,
     pub readings: Vec<GlucoseReading>,
+    pub export_requested: bool,
+    pub export_path: Option<PathBuf>,
+    pub graph_rect: Option<egui::Rect>,
 }
 
 impl Default for GraphState {
@@ -19,6 +24,9 @@ impl Default for GraphState {
             from_date: from.format("%Y-%m-%d").to_string(),
             to_date: now.format("%Y-%m-%d").to_string(),
             readings: Vec::new(),
+            export_requested: false,
+            export_path: None,
+            graph_rect: None,
         }
     }
 }
@@ -53,6 +61,16 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
         if ui.button("Refresh").clicked() {
             range_changed = true;
         }
+        if ui.button("Export PDF").clicked() {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("PDF", &["pdf"])
+                .set_file_name("glucose_report.pdf")
+                .save_file()
+            {
+                state.export_path = Some(path);
+                state.export_requested = true;
+            }
+        }
     });
 
     if range_changed {
@@ -73,7 +91,7 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
         })
         .collect();
 
-    Plot::new("glucose_plot")
+    let _plot_response = Plot::new("glucose_plot")
         .height(300.0)
         .y_axis_label("mmol/L")
         .x_grid_spacer(|input: GridInput| {
@@ -143,4 +161,5 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
                     .width(1.5),
             );
         });
+
 }

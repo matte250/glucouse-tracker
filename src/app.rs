@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use eframe::App;
 use eframe::egui;
 use eframe::egui::CentralPanel;
@@ -13,6 +15,7 @@ pub struct GlucoseTrackerApp {
     readings_list: ReadingsListState,
     graph: GraphState,
     needs_refresh: bool,
+    export_pending: Option<PathBuf>,
 }
 
 impl GlucoseTrackerApp {
@@ -23,6 +26,7 @@ impl GlucoseTrackerApp {
             readings_list: ReadingsListState::default(),
             graph: GraphState::default(),
             needs_refresh: true,
+            export_pending: None,
         };
         refresh_readings(&mut app.readings_list, &app.db);
         refresh_graph(&mut app.graph, &app.db);
@@ -32,6 +36,27 @@ impl GlucoseTrackerApp {
 
 impl App for GlucoseTrackerApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Handle screenshot events
+        if let Some(ref path) = self.export_pending.clone() {
+            let events = ctx.input(|i| i.events.clone());
+            for event in &events {
+                if let egui::Event::Screenshot { image, .. } = event {
+                    let cropped = if let Some(rect) = self.graph.graph_rect {
+                        let ppp = ctx.pixels_per_point();
+                        image.region(&rect, Some(ppp))
+                    } else {
+                        image.as_ref().clone()
+                    };
+
+                    if let Err(e) = crate::export::export_pdf(path, &cropped, &self.graph.readings) {
+                        eprintln!("Failed to save PDF: {e}");
+                    }
+                    self.export_pending = None;
+                    break;
+                }
+            }
+        }
+
         if self.needs_refresh {
             refresh_readings(&mut self.readings_list, &self.db);
             refresh_graph(&mut self.graph, &self.db);
@@ -52,11 +77,21 @@ impl App for GlucoseTrackerApp {
                     });
             });
 
-        egui::SidePanel::right("graph_panel")
+        let graph_response = egui::SidePanel::right("graph_panel")
             .default_width(450.0)
             .show(ctx, |ui| {
                 show_graph(ui, &mut self.graph, &self.db);
             });
+        self.graph.graph_rect = Some(graph_response.response.rect);
+
+        // After rendering the graph, check if an export was requested
+        if self.graph.export_requested {
+            if let Some(path) = self.graph.export_path.take() {
+                self.export_pending = Some(path);
+                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+            }
+            self.graph.export_requested = false;
+        }
 
         CentralPanel::default().show(ctx, |ui| {
             let mut changed = false;
