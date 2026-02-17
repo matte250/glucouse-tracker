@@ -91,75 +91,78 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
         })
         .collect();
 
-    let _plot_response = Plot::new("glucose_plot")
-        .height(300.0)
-        .y_axis_label("mmol/L")
-        .x_grid_spacer(|input: GridInput| {
-            let day = 86400.0_f64;
-            let hour = 3600.0_f64;
-            let (min, max) = input.bounds;
-            let mut marks = Vec::new();
+    let scope = ui.scope(|ui| {
+        Plot::new("glucose_plot")
+            .height(300.0)
+            .y_axis_label("mmol/L")
+            .x_grid_spacer(|input: GridInput| {
+                let day = 86400.0_f64;
+                let hour = 3600.0_f64;
+                let (min, max) = input.bounds;
+                let mut marks = Vec::new();
 
-            // Thickest lines at day boundaries, medium at 6h, thin at 1h
-            let intervals = [day, hour * 6.0, hour];
+                // Thickest lines at day boundaries, medium at 6h, thin at 1h
+                let intervals = [day, hour * 6.0, hour];
 
-            for &step in &intervals {
-                if step < input.base_step_size * 0.5 {
-                    continue;
+                for &step in &intervals {
+                    if step < input.base_step_size * 0.5 {
+                        continue;
+                    }
+                    let first = (min / step).ceil() as i64;
+                    let last = (max / step).floor() as i64;
+                    for i in first..=last {
+                        let value = i as f64 * step;
+                        marks.push(GridMark {
+                            value,
+                            step_size: step,
+                        });
+                    }
                 }
-                let first = (min / step).ceil() as i64;
-                let last = (max / step).floor() as i64;
-                for i in first..=last {
-                    let value = i as f64 * step;
-                    marks.push(GridMark {
-                        value,
-                        step_size: step,
-                    });
+                marks
+            })
+            .x_axis_formatter(|mark: GridMark, _range: &std::ops::RangeInclusive<f64>| {
+                let secs = mark.value as i64;
+                match chrono::DateTime::from_timestamp(secs, 0) {
+                    Some(dt) => dt
+                        .with_timezone(&Local)
+                        .format("%b %d %H:%M")
+                        .to_string(),
+                    None => String::new(),
                 }
-            }
-            marks
-        })
-        .x_axis_formatter(|mark: GridMark, _range: &std::ops::RangeInclusive<f64>| {
-            let secs = mark.value as i64;
-            match chrono::DateTime::from_timestamp(secs, 0) {
-                Some(dt) => dt
-                    .with_timezone(&Local)
-                    .format("%b %d %H:%M")
-                    .to_string(),
-                None => String::new(),
-            }
-        })
-        .label_formatter(|name, point| {
-            let secs = point.x as i64;
-            let time_str = match chrono::DateTime::from_timestamp(secs, 0) {
-                Some(dt) => dt
-                    .with_timezone(&Local)
-                    .format("%b %d %H:%M")
-                    .to_string(),
-                None => format!("{}", point.x),
-            };
-            if name.is_empty() {
-                format!("{time_str}\n{:.1} mmol/L", point.y)
-            } else {
-                format!("{name}\n{time_str}\n{:.1} mmol/L", point.y)
-            }
-        })
-        .show(ui, |plot_ui| {
-            plot_ui.line(Line::new(PlotPoints::new(points)).name("Glucose"));
+            })
+            .label_formatter(|name, point| {
+                let secs = point.x as i64;
+                let time_str = match chrono::DateTime::from_timestamp(secs, 0) {
+                    Some(dt) => dt
+                        .with_timezone(&Local)
+                        .format("%b %d %H:%M")
+                        .to_string(),
+                    None => format!("{}", point.x),
+                };
+                if name.is_empty() {
+                    format!("{time_str}\n{:.1} mmol/L", point.y)
+                } else {
+                    format!("{name}\n{time_str}\n{:.1} mmol/L", point.y)
+                }
+            })
+            .show(ui, |plot_ui| {
+                plot_ui.line(Line::new(PlotPoints::new(points)).name("Glucose"));
 
-            // Threshold lines
-            plot_ui.hline(
-                HLine::new(4.0)
-                    .name("Low (4.0)")
-                    .color(egui::Color32::from_rgb(255, 165, 0))
-                    .width(1.5),
-            );
-            plot_ui.hline(
-                HLine::new(10.0)
-                    .name("High (10.0)")
-                    .color(egui::Color32::from_rgb(255, 60, 60))
-                    .width(1.5),
-            );
-        });
+                // Threshold lines
+                plot_ui.hline(
+                    HLine::new(4.0)
+                        .name("Low (4.0)")
+                        .color(egui::Color32::from_rgb(255, 165, 0))
+                        .width(1.5),
+                );
+                plot_ui.hline(
+                    HLine::new(10.0)
+                        .name("High (10.0)")
+                        .color(egui::Color32::from_rgb(255, 60, 60))
+                        .width(1.5),
+                );
+            });
+    });
+    state.graph_rect = Some(scope.response.rect);
 
 }

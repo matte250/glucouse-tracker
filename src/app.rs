@@ -77,13 +77,11 @@ impl App for GlucoseTrackerApp {
                     });
             });
 
-        let graph_response = egui::SidePanel::right("graph_panel")
+        let _graph_response = egui::SidePanel::right("graph_panel")
             .default_width(450.0)
             .show(ctx, |ui| {
                 show_graph(ui, &mut self.graph, &self.db);
             });
-        self.graph.graph_rect = Some(graph_response.response.rect);
-
         // After rendering the graph, check if an export was requested
         if self.graph.export_requested {
             if let Some(path) = self.graph.export_path.take() {
