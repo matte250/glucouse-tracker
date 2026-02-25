@@ -1,7 +1,7 @@
 use chrono::{Duration, Local, NaiveDate, NaiveDateTime, NaiveTime};
 use eframe::egui::{self, Grid, Key, Ui};
 
-use crate::db::Database;
+use glucose_tracker::db::Database;
 
 pub struct EntryFormState {
     pub single_date: String,

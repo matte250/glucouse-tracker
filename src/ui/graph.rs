@@ -4,8 +4,8 @@ use chrono::{Local, NaiveDate, NaiveDateTime, NaiveTime};
 use eframe::egui::{self, Ui};
 use egui_plot::{GridInput, GridMark, HLine, Line, Plot, PlotPoints};
 
-use crate::db::Database;
-use crate::models::GlucoseReading;
+use glucose_tracker::db::Database;
+use glucose_tracker::models::GlucoseReading;
 
 pub struct GraphState {
     pub from_date: String,
@@ -91,21 +91,39 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
         })
         .collect();
 
+    let first_ts = points.first().map(|p| p[0]).unwrap_or(0.0);
+    let last_ts = points.last().map(|p| p[0]).unwrap_or(0.0);
+
     let scope = ui.scope(|ui| {
         Plot::new("glucose_plot")
             .height(300.0)
             .y_axis_label("mmol/L")
-            .x_grid_spacer(|input: GridInput| {
+            .x_grid_spacer(move |input: GridInput| {
                 let day = 86400.0_f64;
                 let hour = 3600.0_f64;
+                let week = day * 7.0;
                 let (min, max) = input.bounds;
                 let mut marks = Vec::new();
 
-                // Thickest lines at day boundaries, medium at 6h, thin at 1h
-                let intervals = [day, hour * 6.0, hour];
+                // Always add first and last reading timestamps
+                if first_ts >= min && first_ts <= max {
+                    marks.push(GridMark {
+                        value: first_ts,
+                        step_size: week,
+                    });
+                }
+                if last_ts >= min && last_ts <= max && last_ts != first_ts {
+                    marks.push(GridMark {
+                        value: last_ts,
+                        step_size: week,
+                    });
+                }
 
-                for &step in &intervals {
-                    if step < input.base_step_size * 0.5 {
+                let intervals = [week, day, hour * 6.0, hour];
+
+                for (i, &step) in intervals.iter().enumerate() {
+                    // Always show the largest interval so labels are never empty
+                    if i > 0 && step < input.base_step_size * 0.5 {
                         continue;
                     }
                     let first = (min / step).ceil() as i64;
@@ -123,10 +141,14 @@ pub fn show_graph(ui: &mut Ui, state: &mut GraphState, db: &Database) {
             .x_axis_formatter(|mark: GridMark, _range: &std::ops::RangeInclusive<f64>| {
                 let secs = mark.value as i64;
                 match chrono::DateTime::from_timestamp(secs, 0) {
-                    Some(dt) => dt
-                        .with_timezone(&Local)
-                        .format("%b %d %H:%M")
-                        .to_string(),
+                    Some(dt) => {
+                        let local = dt.with_timezone(&Local);
+                        if mark.step_size >= 86400.0 {
+                            local.format("%b %d").to_string()
+                        } else {
+                            local.format("%b %d %H:%M").to_string()
+                        }
+                    }
                     None => String::new(),
                 }
             })

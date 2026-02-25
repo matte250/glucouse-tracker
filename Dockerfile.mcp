@@ -1,0 +1,22 @@
+FROM rust:bookworm AS builder
+
+RUN rustup target add x86_64-unknown-linux-musl \
+ && apt-get update \
+ && apt-get install -y --no-install-recommends musl-tools \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+RUN cargo build \
+      --release \
+      --bin glucose-tracker-mcp \
+      --no-default-features \
+      --target x86_64-unknown-linux-musl
+
+# Export stage — scratch image contains only the binary
+FROM scratch
+COPY --from=builder \
+     /app/target/x86_64-unknown-linux-musl/release/glucose-tracker-mcp \
+     /glucose-tracker-mcp
+ENTRYPOINT ["/glucose-tracker-mcp"]

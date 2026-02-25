@@ -4,7 +4,7 @@ use eframe::App;
 use eframe::egui;
 use eframe::egui::CentralPanel;
 
-use crate::db::Database;
+use glucose_tracker::db::Database;
 use crate::ui::entry_form::{EntryFormState, show_entry_form};
 use crate::ui::graph::{GraphState, refresh_graph, show_graph};
 use crate::ui::readings_list::{ReadingsListState, refresh_readings, show_readings_list};
@@ -48,7 +48,7 @@ impl App for GlucoseTrackerApp {
                         image.as_ref().clone()
                     };
 
-                    if let Err(e) = crate::export::export_pdf(path, &cropped, &self.graph.readings) {
+                    if let Err(e) = glucose_tracker::export::export_pdf(path, &cropped, &self.graph.readings) {
                         eprintln!("Failed to save PDF: {e}");
                     }
                     self.export_pending = None;

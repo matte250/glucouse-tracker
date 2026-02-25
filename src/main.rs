@@ -1,11 +1,8 @@
 mod app;
-mod db;
-mod export;
-mod models;
 mod ui;
 
 use app::GlucoseTrackerApp;
-use db::Database;
+use glucose_tracker::db::Database;
 use eframe::egui;
 
 fn main() -> eframe::Result<()> {

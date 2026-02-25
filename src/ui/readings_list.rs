@@ -1,7 +1,7 @@
 use eframe::egui::{self, Ui};
 
-use crate::db::Database;
-use crate::models::GlucoseReading;
+use glucose_tracker::db::Database;
+use glucose_tracker::models::GlucoseReading;
 
 pub struct ReadingsListState {
     pub readings: Vec<GlucoseReading>,

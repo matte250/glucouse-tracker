@@ -83,4 +83,8 @@ impl Database {
             .execute("DELETE FROM readings WHERE id = ?1", params![id])?;
         Ok(())
     }
+
+    pub fn find_readings_by_datetime(&self, dt: NaiveDateTime) -> Result<Vec<GlucoseReading>> {
+        self.get_readings(Some(dt), Some(dt))
+    }
 }
