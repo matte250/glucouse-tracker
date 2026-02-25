@@ -61,6 +61,26 @@ pub fn export_pdf_headless(
 }
 
 fn render_chart_to_rgb(readings: &[GlucoseReading]) -> Result<Vec<u8>, Box<dyn Error>> {
+    // Register a system font for headless rendering (Linux/Windows)
+    {
+        let font_paths = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",
+            "/System/Library/Fonts/Helvetica.ttc",
+            "C:\\Windows\\Fonts\\arial.ttf",
+        ];
+        for path in &font_paths {
+            if let Ok(data) = std::fs::read(path) {
+                let _ = plotters::style::register_font(
+                    "sans-serif",
+                    plotters::style::FontStyle::Normal,
+                    Box::leak(data.into_boxed_slice()),
+                );
+                break;
+            }
+        }
+    }
+
     let mut rgb_buf = vec![0u8; (HEADLESS_W * HEADLESS_H * 3) as usize];
 
     {
