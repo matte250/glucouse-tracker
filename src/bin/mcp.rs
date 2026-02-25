@@ -202,6 +202,7 @@ impl GlucoseServer {
     }
 }
 
+#[tool(tool_box)]
 impl ServerHandler for GlucoseServer {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {

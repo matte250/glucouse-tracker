@@ -30,7 +30,7 @@ image = "0.25"
 printpdf = "0.8"
 rmcp = { version = "0.1", features = ["server", "transport-io", "macros"] }
 tokio = { version = "1", features = ["full"] }
-plotters = { version = "0.3", default-features = false, features = ["line_series"] }
+plotters = { version = "0.3", default-features = false, features = ["line_series", "ab_glyph"] }
 plotters-bitmap = { version = "0.3", default-features = false }
 serde = { version = "1", features = ["derive"] }
 schemars = "0.8"
